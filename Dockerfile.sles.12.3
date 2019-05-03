@@ -76,6 +76,9 @@ RUN zypper --non-interactive ar --gpgcheck-allow-unsigned -f https://build.hpdd.
     zypper --non-interactive --gpg-auto-import-keys ref dpdk fio
 RUN zypper --non-interactive install dpdk-devel fio-src libiscsi-devel cunit-devel
 
+# meson
+RUN zypper --non-interactive install python-rpm-macros python3-base
+
 # force an upgrade to get any newly built RPMs
 ARG CACHEBUST=1
 RUN zypper --non-interactive up
