@@ -1,14 +1,10 @@
 NAME    := meson
 SRC_EXT := gz
 SOURCE   = https://github.com/$(NAME)build/$(NAME)/releases/download/$(VERSION)/$(NAME)-$(VERSION).tar.$(SRC_EXT)
-SOURCE1   = https://github.com/$(NAME)build/$(NAME)/releases/download/$(VERSION)/$(NAME)-$(VERSION).tar.$(SRC_EXT).asc
-PATCHES  = meson.keyring meson-suse-ify-macros.patch                    \
-	   meson-test-installed-bin.patch meson-restore-python3.4.patch \
-	   meson-suse-fix-llvm-3.8.patch meson-fix-gcc48.patch          \
-	   meson-distutils.patch meson-no-lrelease.patch
-
-$(NAME)-$(VERSION).tar.$(SRC_EXT).asc:
-	curl -f -L -O '$(SOURCE1)'
+PATCHES  = $(NAME)-$(VERSION).tar.$(SRC_EXT) meson.keyring                      \
+	   meson-suse-ify-macros.patch meson-test-installed-bin.patch           \
+	   meson-restore-python3.4.patch meson-suse-fix-llvm-3.8.patch          \
+	   meson-fix-gcc48.patch meson-distutils.patch meson-no-lrelease.patch
 
 COMMON_RPM_ARGS := --define "%_topdir $$PWD/_topdir"
 DIST    := $(shell rpm $(COMMON_RPM_ARGS) --eval %{?dist})
@@ -19,11 +15,11 @@ SED_EXPR := 1s/$(DIST)//p
 endif
 VERSION := $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{version}\n' $(NAME).spec | sed -n '1p')
 RELEASE := $(shell rpm $(COMMON_RPM_ARGS) --specfile --qf '%{release}\n' $(NAME).spec | sed -n '$(SED_EXPR)')
-SRPM        := _topdir/SRPMS/$(NAME)-$(VERSION)-$(RELEASE)$(DIST).src.rpm
+SRPM    := _topdir/SRPMS/$(NAME)-$(VERSION)-$(RELEASE)$(DIST).src.rpm
 RPMS    := $(addsuffix .rpm,$(addprefix _topdir/RPMS/x86_64/,$(shell rpm --specfile $(NAME).spec)))
-SPEC        := $(NAME).spec
+SPEC    := $(NAME).spec
 SOURCES := $(addprefix _topdir/SOURCES/,$(notdir $(SOURCE)) $(PATCHES))
-TARGETS      := $(RPMS) $(SRPM)
+TARGETS := $(RPMS) $(SRPM)
 
 all: $(TARGETS)
 
@@ -33,6 +29,12 @@ all: $(TARGETS)
 _topdir/SOURCES/%: % | _topdir/SOURCES/
 	rm -f $@
 	ln $< $@
+
+debug:
+	echo $(NAME)-$(VERSION).tar.$(SRC_EXT).asc
+
+$(NAME)-$(VERSION).tar.$(SRC_EXT).asc:
+	curl -f -L -O '$(SOURCE).asc'
 
 $(NAME)-$(VERSION).tar.$(SRC_EXT):
 	curl -f -L -O '$(SOURCE)'
