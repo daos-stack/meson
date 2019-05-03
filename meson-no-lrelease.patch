@@ -1,0 +1,26 @@
+From 391878e83aef4c2ba43e69c4850bbc84f409783e Mon Sep 17 00:00:00 2001
+From: Dylan Baker <dylan@pnwbakers.com>
+Date: Tue, 18 Dec 2018 14:13:05 -0800
+Subject: [PATCH] dependencies/ui: Don't require lrelease for qt
+
+We previously didn't require it so we shouldn't silently start doing so.
+
+Fixes #4654
+---
+ mesonbuild/dependencies/ui.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mesonbuild/dependencies/ui.py b/mesonbuild/dependencies/ui.py
+index e8fba91a23..1f65c3b86f 100644
+--- a/mesonbuild/dependencies/ui.py
++++ b/mesonbuild/dependencies/ui.py
+@@ -243,7 +243,7 @@ def gen_bins():
+                 if self.bindir:
+                     yield os.path.join(self.bindir, b), b, False
+                 yield '{}-{}'.format(b, self.name), b, False
+-                yield b, b, self.required
++                yield b, b, self.required if b != 'lrelease' else False
+ 
+         for b, name, required in gen_bins():
+             if found[name].found():
+
