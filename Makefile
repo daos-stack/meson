@@ -30,9 +30,6 @@ _topdir/SOURCES/%: % | _topdir/SOURCES/
 	rm -f $@
 	ln $< $@
 
-debug:
-	echo $(NAME)-$(VERSION).tar.$(SRC_EXT).asc
-
 $(NAME)-$(VERSION).tar.$(SRC_EXT).asc:
 	curl -f -L -O '$(SOURCE).asc'
 
