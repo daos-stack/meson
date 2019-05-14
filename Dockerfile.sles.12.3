@@ -25,7 +25,7 @@ RUN zypper --non-interactive install make rpm-build curl createrepo git    \
                                      lsb-release autoconf automake libtool \
                                      ca-certificates-mozilla
 # meson
-RUN zypper --non-interactive install python-rpm-macros python3-base
+RUN zypper --non-interactive install python-rpm-macros python3-base fdupes
 
 # force an upgrade to get any newly built RPMs
 ARG CACHEBUST=1
