@@ -1,0 +1,35 @@
+--- a/data/macros.meson
++++ b/data/macros.meson
+@@ -1,9 +1,15 @@
+ %__meson %{_bindir}/meson
+ %__meson_wrap_mode nodownload
+ %__meson_auto_features enabled
++%_vpath_srcdir .
++%_vpath_builddir build
+ 
+ %meson \
+-    %set_build_flags \
++    export LANG=C.UTF-8                      \
++    export CFLAGS="${CFLAGS:-%optflags}"     \
++    export CXXFLAGS="${CXXFLAGS:-%optflags}" \
++    export FFLAGS="${FFLAGS:-%optflags}"     \
++    export FCFLAGS="${FCFLAGS:-%optflags}"   \
+     %{shrink:%{__meson} \
+         --buildtype=plain \
+         --prefix=%{_prefix} \
+@@ -25,12 +31,15 @@
+ 	%{nil}}
+ 
+ %meson_build \
++    export LANG=C.UTF-8                      \
+     %ninja_build -C %{_vpath_builddir}
+ 
+ %meson_install \
++    export LANG=C.UTF-8                      \
+     %ninja_install -C %{_vpath_builddir}
+ 
+ %meson_test \
++    export LANG=C.UTF-8                      \
+     %ninja_test -C %{_vpath_builddir} || \
+     ( rc=$?; \
+       echo "-----BEGIN TESTLOG-----"; \
