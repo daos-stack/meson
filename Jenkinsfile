@@ -55,7 +55,7 @@ pipeline {
                 stage('RPM Lint') {
                     agent {
                         dockerfile {
-                            filename 'Dockerfile.centos.7'
+                            filename 'packaging/Dockerfile.centos.7'
                             label 'docker_runner'
                             additionalBuildArgs  '--build-arg UID=$(id -u)'
                             args  '--group-add mock --cap-add=SYS_ADMIN --privileged=true'
@@ -67,51 +67,75 @@ pipeline {
                         */
                         echo "Not linting due to rpmlint not recnognizing Supplements:"
                     }
-                }
+                } // stage('RPM Lint')
+                stage('Check Packaging') {
+                    agent { label 'lightweight' }
+                    steps {
+                        checkoutScm url: 'https://github.com/daos-stack/packaging.git',
+                                    checkoutDir: 'packaging-module'
+                        catchError(stageResult: 'UNSTABLE', buildResult: 'SUCCESS') {
+                            sh 'make PACKAGING_CHECK_DIR=packaging-module' +
+                               ' packaging_check'
+                        }
+                    }
+                    post {
+                        unsuccessful {
+                            emailext body: 'Packaging out of date for ' +
+                                            jobName() + '.\n' +
+                                            'You should update it and submit your PR again.',
+                                     recipientProviders: [
+                                          [$class: 'DevelopersRecipientProvider'],
+                                          [$class: 'RequesterRecipientProvider']
+                                     ],
+                                     subject: 'Packaging is out of date for ' +
+                                              jobName()
+                        }
+                    }
+                } //stage('Check Packaging')
             }
         }
         stage('Build') {
             parallel {
                 stage('Build on SLES 12.3') {
-                    when {
-                        beforeAgent true
-                        allOf {
-                            environment name: 'SLES12_3_DOCKER', value: 'true'
-                        }
-                    }
+                    when { beforeAgent true
+                           environment name: 'SLES12_3_DOCKER', value: 'true' }
                     agent {
                         dockerfile {
-                            filename 'Dockerfile.sles.12.3'
+                            filename 'packaging/Dockerfile.sles.12.3'
                             label 'docker_runner'
-                            additionalBuildArgs  '--build-arg UID=$(id -u) ' +
-                                                 "--build-arg CACHEBUST=${currentBuild.startTimeInMillis}"
+                            args '--privileged=true'
+                            additionalBuildArgs '--build-arg UID=$(id -u)'
                         }
                     }
                     steps {
                         sh '''rm -rf artifacts/sles12.3/
                               mkdir -p artifacts/sles12.3/
-                              rm -rf _topdir/SRPMS
-                              if make srpm; then
-                                  rm -rf _topdir/RPMS
-                                  if make rpms; then
-                                      ln _topdir/{RPMS/*,SRPMS}/*  artifacts/sles12.3/
-                                      createrepo artifacts/sles12.3/
-                                  else
-                                      exit \${PIPESTATUS[0]}
-                                  fi
-                              else
-                                  exit \${PIPESTATUS[0]}
-                              fi'''
+                              make chrootbuild'''
                     }
                     post {
                         success {
+                            sh '''(cd /var/tmp/build-root/home/abuild/rpmbuild/ &&
+                                   cp {RPMS/*,SRPMS}/* $OLDPWD/artifacts/sles12.3/)
+                                  createrepo artifacts/sles12.3/'''
                             publishToRepository product: 'meson',
                                                 format: 'yum',
                                                 maturity: 'stable',
                                                 tech: 'sles-12',
                                                 repo_dir: 'artifacts/sles12.3/'
                         }
-                        always {
+                        unsuccessful {
+                            sh '''(cd /var/tmp/build-root/home/abuild/rpmbuild/BUILD &&
+                                   find . -name configure -printf %h\\\\n | \
+                                   while read dir; do
+                                       if [ ! -f $dir/config.log ]; then
+                                           continue
+                                       fi
+                                       tdir="$OLDPWD/artifacts/sles12.3/autoconf-logs/$dir"
+                                       mkdir -p $tdir
+                                       cp -a $dir/config.log $tdir/
+                                   done)'''
+                        }
+                        cleanup {
                             archiveArtifacts artifacts: 'artifacts/sles12.3/**'
                         }
                     }
@@ -119,37 +143,41 @@ pipeline {
                 stage('Build on Leap 42.3') {
                     agent {
                         dockerfile {
-                            filename 'Dockerfile.leap.42.3'
+                            filename 'packaging/Dockerfile.leap.42.3'
                             label 'docker_runner'
-                            additionalBuildArgs  '--build-arg UID=$(id -u) ' +
-                                                 "--build-arg CACHEBUST=${currentBuild.startTimeInMillis}"
+                            args '--privileged=true'
+                            additionalBuildArgs '--build-arg UID=$(id -u)'
                         }
                     }
                     steps {
                         sh '''rm -rf artifacts/leap42.3/
                               mkdir -p artifacts/leap42.3/
-                              rm -rf _topdir/SRPMS
-                              if make srpm; then
-                                  rm -rf _topdir/RPMS
-                                  if make rpms; then
-                                      ln _topdir/{RPMS/*,SRPMS}/*  artifacts/leap42.3/
-                                      createrepo artifacts/leap42.3/
-                                  else
-                                      exit \${PIPESTATUS[0]}
-                                  fi
-                              else
-                                  exit \${PIPESTATUS[0]}
-                              fi'''
+                              make chrootbuild'''
                     }
                     post {
-                         success {
+                        success {
+                            sh '''(cd /var/tmp/build-root/home/abuild/rpmbuild/ &&
+                                   cp {RPMS/*,SRPMS}/* $OLDPWD/artifacts/leap42.3/)
+                                  createrepo artifacts/leap42.3/'''
                             publishToRepository product: 'meson',
                                                 format: 'yum',
                                                 maturity: 'stable',
                                                 tech: 'leap-42',
                                                 repo_dir: 'artifacts/leap42.3/'
                         }
-                       always {
+                        unsuccessful {
+                            sh '''(cd /var/tmp/build-root/home/abuild/rpmbuild/BUILD &&
+                                   find . -name configure -printf %h\\\\n | \
+                                   while read dir; do
+                                       if [ ! -f $dir/config.log ]; then
+                                           continue
+                                       fi
+                                       tdir="$OLDPWD/artifacts/leap42.3/autoconf-logs/$dir"
+                                       mkdir -p $tdir
+                                       cp -a $dir/config.log $tdir/
+                                   done)'''
+                        }
+                        cleanup {
                             archiveArtifacts artifacts: 'artifacts/leap42.3/**'
                         }
                     }
