@@ -73,6 +73,12 @@ pipeline {
         stage('Build') {
             parallel {
                 stage('Build on SLES 12.3') {
+                    when {
+                        beforeAgent true
+                        allOf {
+                            environment name: 'SLES12_3_DOCKER', value: 'true'
+                        }
+                    }
                     agent {
                         dockerfile {
                             filename 'Dockerfile.sles.12.3'
@@ -98,6 +104,13 @@ pipeline {
                               fi'''
                     }
                     post {
+                        success {
+                            publishToRepository product: 'meson',
+                                                format: 'yum',
+                                                maturity: 'stable',
+                                                tech: 'sles-12',
+                                                repo_dir: 'artifacts/sles12.3/'
+                        }
                         always {
                             archiveArtifacts artifacts: 'artifacts/sles12.3/**'
                         }
@@ -129,17 +142,16 @@ pipeline {
                               fi'''
                     }
                     post {
-                        always {
+                         success {
+                            publishToRepository product: 'meson',
+                                                format: 'yum',
+                                                maturity: 'stable',
+                                                tech: 'leap-42',
+                                                repo_dir: 'artifacts/leap42.3/'
+                        }
+                       always {
                             archiveArtifacts artifacts: 'artifacts/leap42.3/**'
                         }
-                    }
-                }
-                stage('Build on Ubuntu 18.04') {
-                    agent {
-                        label 'docker_runner'
-                    }
-                    steps {
-                        echo "Building on Ubuntu is not implemented for the moment"
                     }
                 }
             }
